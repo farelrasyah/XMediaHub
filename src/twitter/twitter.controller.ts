@@ -7,7 +7,9 @@ import { ResolveDto } from './dto/resolve.dto';
 import { DownloadDto } from './dto/download.dto';
 import { AudioDto } from './dto/audio.dto';
 import { pickBestVariant, pickByBitrate, sanitizeFilename } from '../common/utils';
+import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 
+@ApiTags('twitter')
 @Controller('twitter')
 export class TwitterController {
   constructor(private readonly svc: TwitterService) {}
@@ -17,6 +19,11 @@ export class TwitterController {
    * GET /twitter/resolve?url=...&index=0&all=1
    */
   @Get('resolve')
+  @ApiOperation({ summary: 'Resolve Twitter media', description: 'Get tweet info and available media variants' })
+  @ApiQuery({ name: 'url', description: 'Twitter tweet URL', example: 'https://twitter.com/username/status/123456789' })
+  @ApiQuery({ name: 'index', required: false, description: 'Media index if multiple', example: '0' })
+  @ApiQuery({ name: 'all', required: false, description: 'Include all variants (1 for yes)', example: '1' })
+  @ApiResponse({ status: 200, description: 'Media resolved successfully' })
   async resolve(@Query() q: ResolveDto) {
     const includeAll = q.all === '1';
     const json = await this.svc.resolve(q.url, q.index, includeAll);
@@ -46,6 +53,12 @@ export class TwitterController {
    * GET /twitter/download?url=...&bitrate=...
    */
   @Get('download')
+  @ApiOperation({ summary: 'Download Twitter video', description: 'Redirect to video URL based on bitrate' })
+  @ApiQuery({ name: 'url', description: 'Twitter tweet URL', example: 'https://twitter.com/username/status/123456789' })
+  @ApiQuery({ name: 'index', required: false, description: 'Media index if multiple', example: '0' })
+  @ApiQuery({ name: 'bitrate', required: false, description: 'Desired bitrate (e.g., 720)', example: '720' })
+  @ApiResponse({ status: 302, description: 'Redirect to video URL' })
+  @ApiResponse({ status: 400, description: 'No variants available' })
   async download(@Query() q: DownloadDto, @Res() res: Response) {
     const json = await this.svc.resolve(q.url, q.index, true);
     const variants = json.media?.variants || [];
@@ -62,6 +75,12 @@ export class TwitterController {
    * GET /twitter/audio?url=...&bitrate=128&filename=optional
    */
   @Get('audio')
+  @ApiOperation({ summary: 'Download Twitter audio', description: 'Redirect to audio URL' })
+  @ApiQuery({ name: 'url', description: 'Twitter tweet URL', example: 'https://twitter.com/username/status/123456789' })
+  @ApiQuery({ name: 'index', required: false, description: 'Media index if multiple', example: '0' })
+  @ApiQuery({ name: 'filename', required: false, description: 'Custom filename', example: 'my-audio' })
+  @ApiResponse({ status: 302, description: 'Redirect to audio URL' })
+  @ApiResponse({ status: 400, description: 'No audio variant available' })
   async audio(@Query() q: AudioDto, @Res() res: Response) {
     const json = await this.svc.resolve(q.url, q.index, true);
     const variants = json.media?.variants || [];
